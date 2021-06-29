@@ -56,6 +56,8 @@ def reply():
         res = {}
         res["ret"] = -1
         res["error"] = "提交失败，请稍后再试"
+        res["errno"] = errno
+        res["errmsg"] = errmsg
         return json.dumps(res)
 
 
@@ -79,6 +81,13 @@ def get_current_day_begin_timestamp():
     timestamp = time.mktime(datetime.datetime.strptime(time_string, "%Y-%m-%d 00:00").timetuple())
     return int(timestamp)
 
+# 获取今天开始的时间戳
+def get_current_month_begin_timestamp():
+    time_string = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-01 00:00')
+    timestamp = time.mktime(datetime.datetime.strptime(time_string, "%Y-%m-01 00:00").timetuple())
+    return int(timestamp)
+
+
 # 计算这周开始的时间戳
 def get_current_week_begin_timestamp():
     date1 = datetime.datetime.now()
@@ -92,12 +101,20 @@ def get_current_week_begin_timestamp():
 def get_card_type_list():
 
     rank_type = request.args.get('type', '0')
-    if rank_type ==  "0": # 当天排行榜
-        sql = "select * from (SELECT buyer_openid,count(distinct out_trade_no) as cnt, max(buyer_headimgurl) as buyer_headimgurl, max(buyer_nick) as buyer_nick from order_list where time_end > "  +  str(get_current_day_begin_timestamp()) + " group by buyer_openid) a order by cnt desc"
-    else:       # 周排行榜
-        sql = "select * from (SELECT buyer_openid,count(distinct out_trade_no) as cnt, max(buyer_headimgurl) as buyer_headimgurl, max(buyer_nick) as buyer_nick from order_list where time_end > " + str(get_current_week_begin_timestamp()) + " group by buyer_openid)a order by cnt desc"
 
-    app.logger.debug(sql);
+    time_start = get_current_month_begin_timestamp()
+    time_end = int(time.time())
+    if rank_type ==  "0": # 当天排行榜
+        time_start = get_current_day_begin_timestamp()
+    elif rank_type == "1":       # 周排行榜
+        time_start = get_current_week_begin_timestamp()
+    else:       # 上周
+        time_end = get_current_week_begin_timestamp()
+        time_start = time_end - 86400 * 7
+
+    sql = "select * from (SELECT buyer_openid,count(distinct out_trade_no) as cnt, max(buyer_headimgurl) as buyer_headimgurl, max(buyer_nick) as buyer_nick, max(time_end) as time_end from order_list where time_end >= " + str(time_start) + " and time_end <" + str(time_end) +  " group by buyer_openid)a order by cnt desc, time_end asc"
+
+    app.logger.warning(sql);
     result, errno, errmsg = get_result_with_error(sql)
 
     res = {}
@@ -158,7 +175,7 @@ def code_2_session():
 
 if __name__ == '__main__':
     handler = logging.FileHandler('flask2.log', encoding='UTF-8')
-    handler.setLevel(logging.DEBUG)
+    # handler.setLevel(logging.DEBUG)
     app.logger.addHandler(handler)
 
     print(get_file_name())
