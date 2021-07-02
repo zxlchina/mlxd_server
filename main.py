@@ -19,8 +19,8 @@ sys.path.append("/home/lichzhang/code/JKTW/server/tools")
 from commonlib import *
 
 
-g_appid="wxdf88587fa284b306"
-g_secret="1667e7bf19334c26e72386f3cda0feaa"
+g_appid=""
+g_secret=""
 
 
 
